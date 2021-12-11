@@ -70,6 +70,8 @@ $amount = CurrencyConventor::setExchange($exchange)
         ->conver();
 ```
 
+如果是比較進階的規劃可能就是每個幣值都有自帶的屬性、浮點數、format等等，看需求了
+
 ## API doc
 [link](api.md)
 

@@ -28,7 +28,7 @@ GET /api/v1/exchange/change
 
 Response example
 
-```json
+```
 {
     success: true,
         params: {

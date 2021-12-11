@@ -59,7 +59,7 @@ PHP 高精度運算支持
 
 網站需求，瀏覽房間時要根據網站語系取得該幣值匯率進行轉換顯示
 
-API為exhcnage/change，很像去國外找currency (exchange) 攤位換錢(exchange)一樣
+API為exhcnage/change，很像去國外找currency (exchange) 攤位換錢(exchange)一樣，
 controller裡面有個CurrencyConventor，他要先依賴一個IExchange接口，該接口提供一個方法讓他有辦法取得匯率，然後進行轉換，轉換過程用chain方式設計，主要是可調整度高，用起來直覺。
 
 ```

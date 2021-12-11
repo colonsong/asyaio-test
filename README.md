@@ -1,66 +1,75 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400"></a></p>
+# Test
+## 題目一
 
-<p align="center">
-<a href="https://travis-ci.org/laravel/framework"><img src="https://travis-ci.org/laravel/framework.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
 
-## About Laravel
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+首先不確定這是原本的room,跟property表還是特別為訂單開設的快照表，我就假設都是快照表好了，因為理論上不能去拉原本的表的用戶下完訂單後原本的room,property表都有可能被更改。
+按照原本的表下的話，left join確保拉到所有訂單，where用LIKE方便不用計較28號還是29號，跟BETWEEN比效能沒差很多
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+```
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+SELECT property.name      AS property_name,
+       Count(property_id) property_count
+FROM   orders
+       LEFT JOIN room
+              ON orders.room_id = room.id
+       LEFT JOIN property
+              ON property.id = room.property_id
+WHERE  orders.created_at LIKE '2021-02-%'
+GROUP  BY property_id
+ORDER  BY property_count DESC
+LIMIT  10 
 
-## Learning Laravel
+```
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+##### 建立資料表的SQL
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains over 1500 video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+資料庫 mysql 8 ，[資料表的SQL連結](asiayo.sql)
+主要就是where on 等地方進行索引
 
-## Laravel Sponsors
+如果要另外規劃這三張表，我會盡量的把使用者看到的畫面都寫進order表裡，如果有快照可以拍的話那可以寫重點就好金額、房間名稱、飯店名稱、打折之類的資訊，總之還是以UI要怎麼呈現那些欄位都是必須要寫到orders裡的東西。
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the Laravel [Patreon page](https://patreon.com/taylorotwell).
+```
+SELECT orders.`property_name`,
+       orders.`room_name`,
+       Count(`property_id`) `property_count`
+FROM   orders
+WHERE  created_at LIKE '2021-02-%'
+GROUP  BY property_id
+ORDER  BY property_count DESC
+LIMIT  10 
+```
 
-### Premium Partners
+## 題目二
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Cubet Techno Labs](https://cubettech.com)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[Many](https://www.many.co.uk)**
-- **[Webdock, Fast VPS Hosting](https://www.webdock.io/en)**
-- **[DevSquad](https://devsquad.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[OP.GG](https://op.gg)**
-- **[CMS Max](https://www.cmsmax.com/)**
-- **[WebReinvent](https://webreinvent.com/?utm_source=laravel&utm_medium=github&utm_campaign=patreon-sponsors)**
-- **[Lendio](https://lendio.com)**
-- **[Romega Software](https://romegasoftware.com)**
+剛開發完發現很慢通常都是index沒設，就檢查where、join相關的INDEX有沒有設到，explan、profiling效能分析查看index有沒有跑到，像前面如果切三張表，那每次寫都要開transation寫入，也有可能發生意外LOCK TABLE的情況，所以JOIN表的數量也是考量反正規劃的原因之一，又或著同時間大量人query導致查表變慢，那就要看一些SHOW PROCESSLIST之類的觀察工具，或讓mysql紀錄一些slow query log看有沒有其他影響，其他可能也有硬體面的問題，可能效能太差，硬碟太慢之類
 
-## Contributing
+另外中期常有excel定期匯出，報表拉取相關的業務操作，也會增加系統的不穩定性，好的使用流程的設計也可以增加系統的穩定度，例如excel按下匯出後非同步的等待，讓queue去處理完再讓使用者去下載，query前都帶cache，產出excel後也帶cache file，這樣系統就會比較穩
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+減少表的大小，定期的搬移或寫入時適當的切分order的名稱也是增加穩定度的方式之一，寫job定期的把order表搬到另外一個表上，之後拉取就不會影響到目前的order
 
-## Code of Conduct
+## 題目三
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## Require
 
-## Security Vulnerabilities
+PHP 高精度運算支持
+[php bcmath lib](https://www.php.net/manual/en/bc.setup.php)
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+### 設計理念
 
-## License
+網站需求，瀏覽房間時要根據網站語系取得該幣值匯率進行轉換顯示
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+API為exhcnage/change，很像去國外找currency (exchange) 攤位換錢(exchange)一樣
+controller裡面有個CurrencyConventor，他要先依賴一個IExchange接口，該接口提供一個方法讓他有辦法取得匯率，然後進行轉換，轉換過程用chain方式設計，主要是可調整度高，用起來直覺。
+
+```
+$amount = CurrencyConventor::setExchange($exchange)
+        ->from($request->from)
+        ->to($request->to)
+        ->amount($request->amount)
+        ->conver();
+```
+
+## API doc
+[link](api.md)
+

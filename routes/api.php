@@ -20,7 +20,7 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 });
 
 
-Route::prefix('v1')->group(function () {
+Route::middleware('auth:api')->prefix('v1')->group(function () {
     Route::get('/exchange/change', [ExchangeController::class, 'change']);
 });
 
